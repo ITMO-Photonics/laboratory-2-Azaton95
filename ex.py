@@ -1,13 +1,14 @@
 import numpy as np
+import math
 from scipy.integrate import odeint
 import matplotlib.pyplot as plt
 import matplotlib.animation as animation
 
-def velocity(vz,t,g):
-    vx = vz[0]
-    vy = vz[1]
-    dvxdt = -k*vx
-    dvydt = -k*vy-g
+def velocity(vz0,t,g):
+    vx0 = vz0[0]
+    vy0 = vz0[1]
+    dvxdt = -k*vx0
+    dvydt = -k*vy0-g
     dvzdt = [dvxdt,dvydt]
     return dvzdt
 
@@ -26,15 +27,19 @@ def f(y):
        f = -m*c*y
     return f
 
+r=10
+radius=r/100
+xlim=10.
+ylim=21.
 v0=10
 g=9.8
-k=0.1
+k=0
 m=1
-c=0.9
-alpha=90
+c=1
+alpha=10
 vx0 = v0*np.sin(np.deg2rad(alpha))
 vy0 = v0*np.cos(np.deg2rad(alpha))
-x0 = 0
+x0 = 2
 y0 = 20
 
 vz0 = [vx0, vy0]
@@ -68,24 +73,51 @@ for i in range(1,n):
 #    z0 = z[1]
 
 for i in range(1,n):
-    x[i] = x[i-1] + vx[i]*dt
-    if y[i-1] + vy[i]*dt <= 0:
-       y[i]=0
-#       vy[i:] = vy[i:] * (-c)
+    if x[i-1] + vx[i]*dt <= 0+radius or x[i-1] + vx[i]*dt >= xlim-radius:
+       vx0 = -vx[i]
+       vy0 = vy[i]
+       x0 = x[i-1] + vx[i]*dt
+       y0 = y[i]
+       vz0 = [vx0, vy0]
+       z0 = [x0, y0]
+       for j in range(i,n):
+           tspan = [t[j-1],t[j]]
+           vz = odeint(velocity, vz0, tspan, args=(g,))
+           vx[j] = vz[1][0]
+           vy[j] = vz[1][1]
+           vz0 = vz[1]
+       x[i] = x[i-1] + vx[i]*dt           
     else:
+         x[i] = x[i-1] + vx[i]*dt
+    if y[i-1] + vy[i]*dt <= 0+radius or y[i-1] + vy[i]*dt >= ylim-radius:
+       vx0 = vx[i]
+       vy0 = -vy[i]
+       x0 = x[i]
+       y0 = y[i-1] + vy[i]*dt
+       vz0 = [vx0, vy0]
+       z0 = [x0, y0]
+       for j in range(i,n):
+           tspan = [t[j-1],t[j]]
+           vz = odeint(velocity, vz0, tspan, args=(g,))
+           vx[j] = vz[1][0]
+           vy[j] = vz[1][1]
+           vz0 = vz[1]
        y[i] = y[i-1] + vy[i]*dt
+    else:
+         y[i] = y[i-1] + vy[i]*dt
 
        
 
 fig, ax = plt.subplots()
 
-circle, = ax.plot([], [], 'bo', ms=10)
+
+circle, = ax.plot([], [], 'bo', ms=r)
 coord = np.array([5.,y0])
 k=0
 
 def init():
-    ax.set_xlim([0., 40.])
-    ax.set_ylim([0., 40.])
+    ax.set_xlim([0., xlim])
+    ax.set_ylim([0., ylim])
     return circle,
 
 def updatefig(frame):
@@ -97,6 +129,6 @@ def updatefig(frame):
     circle.set_ydata(coord[1])
     return circle,
 
-anim = animation.FuncAnimation(fig, updatefig, frames=y.size, init_func=init, interval=100, blit=True, repeat=False)
+anim = animation.FuncAnimation(fig, updatefig, frames=y.size, init_func=init, interval=50, blit=True, repeat=False)
 
 plt.show()
