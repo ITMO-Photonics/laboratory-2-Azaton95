@@ -3,13 +3,10 @@ import math
 from scipy.integrate import odeint
 import matplotlib.pyplot as plt
 import matplotlib.animation as animation
-
+k=0
 def velocity(vz0,t,g):
-    vx0 = vz0[0]
-    vy0 = vz0[1]
-    dvxdt = -k*vx0
-    dvydt = -k*vy0-g
-    dvzdt = [dvxdt,dvydt]
+    vx0,vy0 = vz0
+    dvzdt = [-k*vx0,-k*vy0-g]
     return dvzdt
 
 def position(z,t,i):
@@ -31,11 +28,10 @@ r=10
 radius=r/100
 xlim=10.
 ylim=21.
-v0=10
 g=9.8
-k=0
 m=1
 c=1
+v0=5
 alpha=10
 vx0 = v0*np.sin(np.deg2rad(alpha))
 vy0 = v0*np.cos(np.deg2rad(alpha))
@@ -45,10 +41,11 @@ y0 = 20
 vz0 = [vx0, vy0]
 z0 = [x0, y0]
 
+t0 = 0.
 t_s = 40.
 n = 1000
 dt = t_s/n
-t = np.linspace(0.,t_s,n)
+t = np.linspace(t0,t_s,n)
 vx = np.empty_like(t)
 vy = np.empty_like(t)
 x = np.empty_like(t)
@@ -64,6 +61,7 @@ for i in range(1,n):
     vx[i] = vz[1][0]
     vy[i] = vz[1][1]
     vz0 = vz[1]
+
 
 #for i in range(1,n):
 #    tspan = [t[i-1],t[i]]
@@ -129,6 +127,6 @@ def updatefig(frame):
     circle.set_ydata(coord[1])
     return circle,
 
-anim = animation.FuncAnimation(fig, updatefig, frames=y.size, init_func=init, interval=50, blit=True, repeat=False)
+anim = animation.FuncAnimation(fig, updatefig, frames=y.size, init_func=init, interval=25, blit=True, repeat=False)
 
 plt.show()
