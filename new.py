@@ -17,9 +17,9 @@ def vel(t, vz, g):
     dvzdt = [-kv*vx, -kv*vy-g]
     return dvzdt
 
-def ball1(x0,y0,v0,alpha,k_res,r,fun):        
+def ball1(x0,y0,v0,alpha,k_res,r,n,method,fun):        
     solver = ode(fun)
-    solver.set_integrator('dorpi5')
+    solver.set_integrator(method)
     g = 9.8
     solver.set_f_params(g)
     vx0 = v0*np.sin(np.deg2rad(alpha))
@@ -29,7 +29,6 @@ def ball1(x0,y0,v0,alpha,k_res,r,fun):
     solver.set_initial_value(vz0, t0)
     radius=r/100
     t1 = 40.
-    n = 1000
     t = np.linspace(t0, t1, n)
     dt = t[1]
     vz = np.empty((n, 2))
@@ -57,7 +56,7 @@ def ball1(x0,y0,v0,alpha,k_res,r,fun):
         solver.set_initial_value(vz0, t0)
         x[i] = x[i-1] + vx[i]*dt
         y[i] = y[i-1] + vy[i]*dt    
-    return vx, vy, x, y, x0, y0, r, t
+    return vx, vy, x, y, x0, y0, r, n, t
     
 
 def velocity(vz0,t,g):
@@ -66,14 +65,13 @@ def velocity(vz0,t,g):
     dvzdt = [-kv*vx0,-kv*vy0-g]
     return dvzdt
 
-def ball2(x0,y0,v0,alpha,k_res,r,fun):
+def ball2(x0,y0,v0,alpha,k_res,r,n,fun):
     g=9.8
     radius = r/1000
     vx0, vy0 = v0*np.sin(np.deg2rad(alpha)), v0*np.cos(np.deg2rad(alpha))
     vz0 = [vx0, vy0]
     t0 = 0.
     t_s = 40.
-    n = 1000
     t = np.linspace(t0,t_s,n)
     dt = t[1]
     vx, vy, x, y = np.empty_like(t), np.empty_like(t), np.empty_like(t), np.empty_like(t)
@@ -90,20 +88,24 @@ def ball2(x0,y0,v0,alpha,k_res,r,fun):
             vy[i] = -vy[i]*k_res        
         vz0 = [vx[i], vy[i]]
         x[i] = x[i-1] + vx[i]*dt
-        y[i] = y[i-1] + vy[i]*dt 
-    return vx,vy, x, y, x0, y0, r, t
+        y[i] = y[i-1] + vy[i]*dt
+    return vx,vy, x, y, x0, y0, r, n, t
 
 
 
 xlim=10.
 ylim=21.
-vx, vy, x, y, x0, y0, r, t = ball1(2.,20.,5.,10,1,10,vel)
-vx2, vy2, x2, y2, x02, y02, r2, t = ball2(2.,20.,5.,10,1,10,velocity)
+vx, vy, x, y, x0, y0, r, n, t = ball1(2.,20.,5.,10,1,10,10000,'dop853',vel)
+vx2, vy2, x2, y2, x02, y02, r2, n, t = ball2(2.,20.,5.,10,1,10,10000,velocity)
 
 m = 1
 g = 9.8
-W = (m * (np.sqrt(vx ** 2 + vy ** 2)) / 2) + m * g * y
-W2 = (m * (np.sqrt(vx2 ** 2 + vy2 ** 2)) / 2) + m * g * y2
+
+W_k = (m * (np.sqrt(vx ** 2 + vy ** 2)) ** 2 / 2) 
+W_k2 = (m * (np.sqrt(vx2 ** 2 + vy2 ** 2)) ** 2 / 2)
+
+W_p = m * g * y
+W_p2 = m * g * y2
 
 fig, ax = plt.subplots()
 
@@ -132,26 +134,33 @@ def updatefig(frame):
     k += 1
     return circle, circle2
 
-anim = animation.FuncAnimation(fig, updatefig, frames=y.size, init_func=init, interval=25, blit=True, repeat=False)
+anim = animation.FuncAnimation(fig, updatefig, frames=y.size, init_func=init, interval=25*(1000/n), blit=True, repeat=False)
 
 plt.show()
 
-plt.plot(t, y, label='y')
-plt.plot(t, y2, label='y2')
+plt.plot(t, vy, label='vy')
+plt.plot(t, vy2, label='vy2')
 plt.xlabel('t')
 plt.grid(True)
 plt.legend()
 plt.show()
 
-plt.plot(t, x, label='x')
-plt.plot(t, x2, label='x2')
+plt.plot(t, vx, label='vx')
+plt.plot(t, vx2, label='vx2')
 plt.xlabel('t')
 plt.grid(True)
 plt.legend()
 plt.show()
 
-plt.plot(t, W, label='W')
-plt.plot(t, W2, label='W2')
+plt.plot(t, W_k, label='W_k')
+plt.plot(t, W_p, label='W_p')
+plt.xlabel('t')
+plt.grid(True)
+plt.legend()
+plt.show()
+
+plt.plot(t, W_k, label='W_k2')
+plt.plot(t, W_p, label='W_p2')
 plt.xlabel('t')
 plt.grid(True)
 plt.legend()
