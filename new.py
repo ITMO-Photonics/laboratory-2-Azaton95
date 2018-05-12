@@ -6,6 +6,54 @@ from scipy.integrate import odeint
 import matplotlib.pyplot as plt
 import matplotlib.animation as animation
 
+def RK4(f):
+    return lambda t, y, dt: (
+            lambda dy1: (
+            lambda dy2: (
+            lambda dy3: (
+            lambda dy4: (dy1 + 2*dy2 + 2*dy3 + dy4)/6
+            )( dt * f( t + dt  , y + dy3   ) )
+	    )( dt * f( t + dt/2, y + dy2/2 ) )
+	    )( dt * f( t + dt/2, y + dy1/2 ) )
+	    )( dt * f( t       , y         ) )
+
+ 
+def ballrk4(x0,y0,v0,alpha,k_res,r,n):
+    dvx = RK4(lambda t, vx: 0)
+    g = 9.8
+    dvy = RK4(lambda t, vy: -g)
+    vx0 = v0*np.sin(np.deg2rad(alpha))
+    vy0 = v0*np.cos(np.deg2rad(alpha))
+    t0 = 0.0
+    t1 = 40.0
+    radius=r/100
+    t = np.linspace(t0, t1, n)
+    dt = t[1]
+    vx = np.empty_like(t)
+    vy = np.empty_like(t)
+    vx[0] = vx0
+    vy[0] = vy0
+    x = np.empty_like(t)
+    y = np.empty_like(t)
+    x[0] = x0
+    y[0] = y0
+    g = 9.8
+    vxf = vx0
+    vyf = vy0
+    for i in range(1,n):
+        vy[i] = vy[i-1] + dvy( t[i-1], vy[i-1], dt )
+        if y[i-1] + vy[i]*dt <= 0+radius or y[i-1] + vy[i]*dt >= ylim-radius:
+            vy[i] = -vy[i]*k_res 
+            vyf = -vyf    
+        vx[i] = vx[i-1] + dvx( t[i-1], vx[i-1], dt )
+        if x[i-1] + vx[i]*dt <= 0+radius or x[i-1] + vx[i]*dt >= xlim-radius:
+            vx[i] = -vx[i]*k_res
+            vxf = -vxf
+        x[i] = x[i-1] + vx[i]*dt
+        y[i] = y[i-1] + vy[i]*dt   
+    return vx, vy, x, y, x0, y0, r, n, t
+
+
 def vel(t, vz, g):
     """
     Right hand side of the differential equations
@@ -16,6 +64,51 @@ def vel(t, vz, g):
     vx, vy = vz
     dvzdt = [-kv*vx, -kv*vy-g]
     return dvzdt
+
+def vxf(t, vx, g):
+    kv=0    
+    dvxdt = -kv*vx
+    return dvxdt
+
+def vyf(t,vy,g):
+    kv=0    
+    dvydt = -kv*vy-g
+    return dvydt
+
+
+def Eul(x0,y0,v0,alpha,k_res,r,n,fun1,fun2):
+    vx0 = v0*np.sin(np.deg2rad(alpha))
+    vy0 = v0*np.cos(np.deg2rad(alpha))
+    t0 = 0.0
+    t1 = 40.0
+    radius=r/100
+    t = np.linspace(t0, t1, n)
+    dt = t[1]
+    vx = np.empty_like(t)
+    vy = np.empty_like(t)
+    vx[0] = vx0
+    vy[0] = vy0
+    x = np.empty_like(t)
+    y = np.empty_like(t)
+    x[0] = x0
+    y[0] = y0
+    g = 9.8
+    vxf = vx0
+    vyf = vy0
+    for i in range(1,n):
+        vxf += fun1(dt,vx[i-1],g)*dt
+        vyf += fun2(dt,vy[i-1],g)*dt
+        vx[i] = vxf
+        vy[i] = vyf
+        if x[i-1] + vx[i]*dt <= 0+radius or x[i-1] + vx[i]*dt >= xlim-radius:
+            vx[i] = -vx[i]*k_res
+            vxf = -vxf
+        if y[i-1] + vy[i]*dt <= 0+radius or y[i-1] + vy[i]*dt >= ylim-radius:
+            vy[i] = -vy[i]*k_res 
+            vyf = -vyf
+        x[i] = x[i-1] + vx[i]*dt
+        y[i] = y[i-1] + vy[i]*dt   
+    return vx, vy, x, y, x0, y0, r, n, t
 
 def ball1(x0,y0,v0,alpha,k_res,r,n,method,fun):        
     solver = ode(fun)
@@ -95,8 +188,10 @@ def ball2(x0,y0,v0,alpha,k_res,r,n,fun):
 
 xlim=10.
 ylim=21.
-vx, vy, x, y, x0, y0, r, n, t = ball1(2.,20.,5.,10,1,10,10000,'dop853',vel)
-vx2, vy2, x2, y2, x02, y02, r2, n, t = ball2(2.,20.,5.,10,1,10,10000,velocity)
+vx, vy, x, y, x0, y0, r, n, t = ball1(2.,20.,5.,10,1,10,10000,'dopri5',vel)
+#vx2, vy2, x2, y2, x02, y02, r2, n, t = ball2(2.,20.,5.,10,1,10,10000,velocity)
+#vx2, vy2, x2, y2, x02, y02, r2, n, t = Eul(2.,20.,5.,10,1,9,10000,vxf,vyf)
+vx2, vy2, x2, y2, x02, y02, r2, n, t = ballrk4(2.,20.,5.,10,1,9,10000)
 
 m = 1
 g = 9.8
@@ -134,7 +229,7 @@ def updatefig(frame):
     k += 1
     return circle, circle2
 
-anim = animation.FuncAnimation(fig, updatefig, frames=y.size, init_func=init, interval=25*(1000/n), blit=True, repeat=False)
+anim = animation.FuncAnimation(fig, updatefig, frames=y.size, init_func=init, interval=5*(10000/n), blit=True, repeat=False)
 
 plt.show()
 
